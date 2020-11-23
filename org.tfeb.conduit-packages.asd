@@ -5,6 +5,8 @@
 
 (defsystem "org.tfeb.conduit-packages"
   :description "Conduit packages"
+  :version "1.0.0"
   :author "Tim Bradshaw"
   :license "MIT"
+  :homepage "https://github.com/tfeb/conduit-packages"
   :components ((:file "conduit-packages")))
