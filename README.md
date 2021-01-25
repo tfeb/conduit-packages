@@ -1,4 +1,4 @@
-# Conduit packages
+# [Conduit packages](https://github.com/tfeb/conduit-packages)
 This system defines a way of treating Common Lisp packages as 'conduits' which can sit between one or more implementation packages and users of those packages.  Conduits try to be dynamic: assuming you modify the packages for which they are  conduits for using the functionality defined in this system, then conduit packages will notice the changes and recompute themselves.
 
 This system also defines a way of making clones of packages which try to be as identical to them as possible.  Clones are not dynamic, but rather point-in-time copies.
