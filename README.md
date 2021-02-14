@@ -19,7 +19,7 @@ All the examples below assume that the current package is `org.tfeb.clc-user`, s
 
 Let's say I'm writing a program which consists of several implementation packages, say `com.cley.my-great-prog.clever-hacks`, `com.cley.my-great-prog.not-so-clever-hacks` and `com.cley.my-great-prog.outright-misfeatures`.  The definitions of these three packages might be:
 
-```
+```lisp
 (defpackage :com.cley.my-great-prog.clever-hacks
   (:use :cl)
   (:export #:cause-fire))
@@ -35,7 +35,7 @@ Let's say I'm writing a program which consists of several implementation package
 
 Now I want to provide a single package, `com.cley.my-great-program` which combines the functionality of the three packages:
 
-```
+```lisp
 (defpackage :com.cley.my-great-prog
   (:use)
   (:extends :com.cley.my-great-prog.clever-hacks)
@@ -45,7 +45,7 @@ Now I want to provide a single package, `com.cley.my-great-program` which combin
 
 And now
 
-```
+```lisp
 > (do-external-symbols
       (s (find-package :com.cley.my-great-prog))
     (format t "~&~A from ~A~%"
@@ -58,9 +58,9 @@ CAUSE-SERIOUS-FIRE from COM.CLEY.MY-GREAT-PROG.NOT-SO-CLEVER-HACKS
 
 So `com.cley.my-great-prog` serves as a *conduit* for the various implementation packages of the program, which means that users of the program don't have to worry about what the implementation packages are.
 
-Conduits are dynamic.  If I now decide that the ` com.cley.my-great-prog.clever-hacks` package should export some other symbols, I can simply redefine it:
+Conduits are dynamic.  If I now decide that the `com.cley.my-great-prog.clever-hacks` package should export some other symbols, I can simply redefine it:
 
-```
+```lisp
 (defpackage :com.cley.my-great-prog.clever-hacks
   (:use :cl)
   (:export #:cause-fire
@@ -69,7 +69,7 @@ Conduits are dynamic.  If I now decide that the ` com.cley.my-great-prog.clever-
 
 and now
 
-```
+```lisp
 (do-external-symbols
       (s (find-package :com.cley.my-great-prog))
     (format t "~&~A from ~A~%"
@@ -88,7 +88,7 @@ The dynamic behaviour of conduit packages is a little fragile: it will work so l
 
 Conduits can export only part of the packages for which they are conduits.  For instance, perhaps I don't want the `burn-petrol` feature:
 
-```
+```lisp
 (defpackage :com.cley.my-great-prog
   (:use)
   (:extends/excluding :com.cley.my-great-prog.clever-hacks
@@ -99,10 +99,10 @@ Conduits can export only part of the packages for which they are conduits.  For 
 
 Or perhaps I *only* want to burn petrol:
 
-```
+```lisp
 (defpackage :com.cley.my-great-prog
   (:use)
-  (:extends/excluding :com.cley.my-great-prog.clever-hacks
+  (:extends/including :com.cley.my-great-prog.clever-hacks
    #:burn-petrol)
   (:extends :com.cley.my-great-prog.not-so-clever-hacks)
   (:extends :com.cley.my-great-prog.outright-misfeatures))
@@ -112,7 +112,7 @@ In these two latter cases the symbols you are excluding or including need to exi
 
 Using inclusions and exclusions like this allows you to construct conduit packages which are 'like' underlying packages but have some small differences, such as replacing some functionality.  `org.tfeb.clc` is such a package: it is a conduit which extends `cl` but replaces some of its functionality.  Here is its definition:
 
-```
+```lisp
 (defpackage :org.tfeb.cl/conduits
   (:use)
   (:nicknames :org.tfeb.clc)
@@ -124,7 +124,7 @@ Using inclusions and exclusions like this allows you to construct conduit packag
 
 Note that `org.tfeb.clc-user` is *not* a conduit: it's just a package which uses `org.tfeb.clc` rather than `cl`:
 
-```
+```lisp
 (defpackage :org.tfeb.cl-user/conduits
   (:nicknames :org.tfeb.clc-user)
   (:use :org.tfeb.clc))))
@@ -144,7 +144,7 @@ Cloning a package is making a package which is 'like' it: all of its internal, e
 
 Here is an example of making a clone:
 
-```
+```lisp
 (defpackage :org.tfeb.foo
   (:use :org.tfeb.clc)
   (:export #:spot))
@@ -159,7 +159,7 @@ Here is an example of making a clone:
 
 Now
 
-```
+```lisp
 >  (eq 'org.tfeb.foo:spot 'org.tfeb.bar:spot)
 t
 
