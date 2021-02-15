@@ -1,5 +1,5 @@
-# [Conduit packages](https://github.com/tfeb/conduit-packages)
-This system defines a way of treating Common Lisp packages as 'conduits' which can sit between one or more implementation packages and users of those packages.  Conduits try to be dynamic: assuming you modify the packages for which they are  conduits for using the functionality defined in this system, then conduit packages will notice the changes and recompute themselves.
+# [Conduit packages](https://github.com/tfeb/conduit-packages "Conduit packages")
+This system defines a way of treating Common Lisp packages as 'conduits' which can sit between one or more implementation packages and users of those packages.  Conduits try to be dynamic: assuming you modify the packages for which they are  conduits using the functionality defined in this system, then conduit packages will notice the changes and recompute themselves.
 
 This system also defines a way of making clones of packages which try to be as identical to them as possible.  Clones are not dynamic, but rather point-in-time copies.
 
@@ -8,8 +8,8 @@ The most important interface to this is through a variant version of the `defpac
 ## Packages in this system
 All packages have domain-structured names.
 
-- `org.tfeb.conduit-packages` is the implementation package.  it exports `defpackage` as well as some modified versions of other package functionality, as well as a couple of other names.
-- `org.tfeb.cl/conduits` (nickname `org.tfeb.clc`) is a variant version of the standard-defined `common-lisp` package – in fact, a conduit package – which exports all of the symbols in `cl` except for some package-related ones, which are replaced with the appropriate versions from `org.tfeb.conduit-packages`.  You can use this package where you would nomally use the `cl` packge.
+- `org.tfeb.conduit-packages` is the implementation package.  It exports `defpackage`and some modified versions of other package functionality, as well as a couple of other names.
+- `org.tfeb.cl/conduits` (nickname `org.tfeb.clc`) is a variant version of the standard-defined `common-lisp` package – in fact, a conduit package – which exports all of the symbols in `cl` except for some package-related ones, which are replaced with the appropriate versions from `org.tfeb.conduit-packages`.  You can use this package where you would normally use the `cl` package.
 - `org.tfeb.cl-user/conduits` (nickname `org.tfeb.clc-user`) is a `cl-user` style package which uses `org.tfeb.clc` instead of `cl`.  This package is useful as a scratch package in the same way `cl-user` is.
 
 Note that it will not (and can not) work, in any package which uses `cl`, to simply say `(use-package :org.tfeb.conduit-packages)`, as there are inevitable name clashes.  Instead you should either define a package which uses `org.tfeb.clc`, or define your own conduit package (see below).
@@ -84,7 +84,7 @@ CAUSE-SERIOUS-FIRE from COM.CLEY.MY-GREAT-PROG.NOT-SO-CLEVER-HACKS
 
 The conduit package noticed the redefinition of a package for which it was a conduit, and changed its exports appropriately.
 
-The dynamic behaviour of conduit packages is a little fragile: it will work so long as you use the conduits-provided versions of `defpackage`, `export` and so on, but it *won't* work if you use the standard CL ones, either explicity or implicitly, during error recovery say.  If the system gets  in a mess, you can always call `org.tfeb.conduit-packages:recompute-conduits` to recompute everything.  The dynamic behaviour of conduit packages is meant to be a help for when writing a program, during which process packages often get reorganised fairly frequently: it's not something that should be relied on for production.
+The dynamic behaviour of conduit packages is a little fragile: it will work so long as you use the conduits-provided versions of `defpackage`, `export` and so on, but it *won't* work if you use the standard CL ones, either explicitly or implicitly, during error recovery say.  If the system gets  in a mess, you can always call `org.tfeb.conduit-packages:recompute-conduits` to recompute everything.  The dynamic behaviour of conduit packages is meant to be a help for when writing a program, during which process packages often get reorganised fairly frequently: it's not something that should be relied on for production.
 
 Conduits can export only part of the packages for which they are conduits.  For instance, perhaps I don't want the `burn-petrol` feature:
 
