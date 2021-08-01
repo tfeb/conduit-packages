@@ -180,6 +180,11 @@ Error: Symbol "SPIT" not found at all in the ORG.TFEB.FOO package.
 
 The idea behind package clones was to allow you to make a quick-and-dirty point-in-time copy of a package in which you could then experiment without contaminating the namespace of the cloned package.  Their intended use was on LispMs which took a long time to reboot: in practice I think I have almost never used them.
 
+## Two approaches to conduits
+When I first wrote conduit packages I was concerned about fasl size, so the expansion of `defpackage`first used `cl:defpackage` to define a simple package, and then walked over the packages it was extending and modified it appropriately.  This made for small fasls, but meant that you often got warnings when compiling & loading files, because `cl:defpackage` would redefine a package which was incompatible with its current state when the file was loaded.
+
+I'm less concerned with fasl sizes now, so I have changed the implementation to compute an enormous `cl:defpackage` form instead.  For file containing only, say `(defpackage :foo (:use) (:extends :cl))` this can cause a factor of ten increase in fasl size (from about 3KB to about 22kB in one implementation), but it means you don't get annoying warnings.  Given that everything else around CL has bloated by hugely more than a factor of ten since the late 1990s, I think this is a price worth paying.
+
 ## Notes
 Conduit packages should generally be defined with `(:use)` so the used-package list is empty rather than an implementation-default.  A conduit really is just that: it doesn't need to use any packages because it's never a package where anything is defined.
 
@@ -192,4 +197,4 @@ All of this system should be portable CL: if it's not that's a bug.
 
 ---
 
-Conduit packages is copyright 1998-2002, 2020 by Tim Bradshaw.  See `LICENSE` for the license.
+Conduit packages is copyright 1998-2002, 2020-2021 by Tim Bradshaw.  See `LICENSE` for the license.

@@ -51,13 +51,30 @@
 ;;; this code to use it.
 ;;;
 ;;; This package seems to have originated on or before the 24th of
-;;; July 1998 and was originally written on a Symbolics.  Not much of
-;;; it has changed since then, which I am quite proud about.
+;;; July 1998 and was originally written on a Symbolics.  Until
+;;; recently not much of it has changed since then, which I was quite
+;;; proud about.
 ;;;
-;;; Copyright 1998-2002, 2020 Tim Bradshaw.  This code may be used for
-;;; any purpose whatsoever by anyone. It has no warranty whatsoever. I
-;;; would appreciate acknowledgement if you use it in anger, and I
-;;; would also very much appreciate any feedback or bug fixes.
+;;; That 1990s version defined conduits & clones by having DEFPACKAGE
+;;; expand to a 'clean' underlying DEFPACKAGE form, followed by a form
+;;; which constructed the conduit or clone.  This had the advantage
+;;; that the resulting macroexpansion was small, but the disadvantage
+;;; that compiling and loading a file often resulted in warnings as
+;;; the package was redefined apparently incompatibly with its current
+;;; state.  At the time that seemed like a reasonable tradeoff: not so
+;;; much now.  What now happens is that DEFPACKAGE for a conduit
+;;; package expands into an enormous underlying DEFPACKAGE which
+;;; defines the package in its final state (together with some
+;;; validation and housekeeping code wrapped around it).  This makes
+;;; FASLs much larger (a file containing a package which extends CL
+;;; now compiles to a 22kB FASL compared with under 3kB with the old
+;;; mechanism), but means there are no spurious warnings.
+;;;
+;;; Copyright 1998-2002, 2020-2021 Tim Bradshaw.  This code may be
+;;; used for any purpose whatsoever by anyone. It has no warranty
+;;; whatsoever. I would appreciate acknowledgement if you use it in
+;;; anger, and I would also very much appreciate any feedback or bug
+;;; fixes.
 ;;;
 ;;; !!! TODO: more of the package operators probably need to be shadowed
 ;;;
@@ -161,34 +178,44 @@ to make them consistent"
   (dolist (pd *package-conduits* (values))
     (recompute-conduits-for (car pd))))
 
+(defun ensure-package (p)
+  ;; Return the package corresponding to P.  I am no longer sure why I
+  ;; used ETYPECASE rather than relying on FIND-PACKAGE to do that but
+  ;; I don't want to change it now, in case there was a good reason.
+  (let ((package (etypecase p
+                   (package p)
+                   ((or symbol string) (find-package p)))))
+    (unless package
+      ;; might want to be able to continue
+      (conduit-error p "No package named ~S" p))
+    package))
+
+(defun ensure-external-symbol (d p)
+  ;; ensure that D designates an external symbol in P, and return the
+  ;; symbol if so
+  (multiple-value-bind (s state)
+      (find-symbol (etypecase d
+                     (symbol (symbol-name d))
+                     (string d))
+                   p)
+    (ecase state
+      ((:external)
+       s)
+      ((nil)
+       (conduit-error p "Symbol name ~S not found in ~S" d p))
+      ((:internal)
+       (conduit-error p "Symbol ~S internal in ~S" s p))
+      ((:inherited)
+       (conduit-error p "Symbol ~S not directly present in ~S" s p)))))
+
 (defun make-package-conduit-package (package/name &key
                                                   extends
                                                   extends/including
                                                   extends/excluding)
-  (flet ((ensure-package (p)
-           (let ((package (etypecase p
-                            (package p)
-                            ((or symbol string) (find-package p)))))
-             (unless package
-               ;; might want to be able to continue
-               (conduit-error p "No package named ~S" p))
-             package))
-         (ensure-external-symbol (d p)
-           (multiple-value-bind (s state)
-               (find-symbol (etypecase d
-                              (symbol (symbol-name d))
-                              (string d))
-                            p)
-             (ecase state
-               ((:external)
-                s)
-               ((nil)
-                (conduit-error p "Symbol name ~S not found in ~S" d p))
-               ((:internal)
-                (conduit-error p "Symbol ~S internal in ~S" s p))
-               ((:inherited)
-                (conduit-error p "Symbol ~S not directly present in ~S" s p)))))
-         (import-symbol (s pack)
+  ;; In the old implementation this was used after DEFPACKAGE to turn
+  ;; a package into a conduit.  It's still used when recomputing
+  ;; conduits
+  (flet ((import-symbol (s pack)
            (cl:import (if (eq s 'nil)
                           '(nil)
                           s)
@@ -224,6 +251,74 @@ to make them consistent"
               (export-symbol s package)))))
       package)))
 
+;;; Parts of the expansion of DEFPACKAGE
+;;;
+
+(defun validate-conduits (&key extends
+                               extends/including
+                               extends/excluding)
+  ;; Validate that a conduit is going to work: all the packages it is
+  ;; a conduit for shold exist, included symbols should be external in
+  ;; them.
+  (dolist (ex extends)
+    (ensure-package ex))
+  (dolist (ei extends/including)
+    (let ((p (ensure-package (first ei))))
+      (dolist (s (rest ei))
+        (ensure-external-symbol s p))))
+  (dolist (ee extends/excluding)
+    (ensure-package (first ee)))
+  t)
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; Needed on voyage
+  (defun compute-conduit-clauses (&key extends
+                                       extends/including
+                                       extends/excluding)
+    ;; Return clauses for underlying DEFPACKAGE for a conduit.  This
+    ;; does not sanity-check (see VALIDATE-CONDUITS, which will have
+    ;; done this).
+    (append
+     (loop for p in extends
+           for externals = (loop for s being the external-symbols of (find-package p)
+                                 collect (symbol-name s))
+           collect `(:import-from ,p ,@externals)
+           collect `(:export ,@externals))
+     (loop for (p . included) in extends/including
+           collect `(:import-from ,p ,@included)
+           collect `(:export ,@included))
+     (loop for (p . excluded) in extends/excluding
+           for excluded-names = (mapcar #'string excluded)
+           for included = (loop for s being the external-symbols of (find-package p)
+                                for sn = (symbol-name s)
+                                unless (member sn excluded-names
+                                               :test #'string=)
+                                collect sn)
+           collect `(:import-from ,p ,@included)
+           collect `(:export ,@included)))))
+
+(defun note-conduits (package-name &key extends
+                                   extends/including
+                                   extends/excluding)
+  ;; Note conduit relationships.  Again, all validation will have been
+  ;; done by VALIDATE-CONDUITS.  The package exists at this point.
+  (let* ((cn (canonicalise-package-name package-name))
+         (found (assoc cn *conduit-package-descriptions*))
+         (descr `(:extends ,extends
+                  :extends/including ,extends/including
+                  :extends/excluding ,extends/excluding)))
+    (if found
+        (setf (cdr found) descr)
+      (push (cons cn descr) *conduit-package-descriptions*)))
+  (let ((p (find-package package-name)))
+    (dolist (e extends)
+      (note-conduit (find-package e) p))
+    (dolist (ei extends/including)
+      (note-conduit (find-package (first ei)) p))
+    (dolist (ee extends/excluding)
+      (note-conduit (find-package (first ee)) p)))
+  package-name)
+
 ;;; Cloning.  Unlike conduits, cloning is a static operation: making a
 ;;; clone of a package says to copy its state at a given moment and
 ;;; then ignore any further changes.  Redefining a cloned package will
@@ -238,35 +333,17 @@ to make them consistent"
 ;;; It's not clear if any of this behaviour is right.
 ;;;
 
-(defun clone-packages-to-package (froms to)
-  (let ((tp (typecase to
-              (package to)
-              (t (or (find-package to)
-                     (make-package to :use '()))))))
-    (when (null tp)
-      (conduit-error to "No target package..."))
-    (loop for f in froms
-          for from = (typecase f
-                       (package f)
-                       (t (find-package f)))
-          for used = (package-use-list from)
-          for shadows = (package-shadowing-symbols from)
-          for exports = (let ((exps '()))
-                          (do-external-symbols (s from exps)
-                            (push s exps)))
-          for interned-symbols = (let ((ints '()))
-                                   (do-symbols (s from ints)
-                                     (when (eq (symbol-package s) from)
-                                       (push s ints))))
-          when interned-symbols
-          do (import interned-symbols tp)
-          when shadows
-          do (shadow shadows tp)
-          when exports
-          do (export exports tp)
-          when used
-          do (use-package used tp))
-    tp))
+(defun compute-clone-clauses (froms)
+  ;; Make clauses for cloning one or more packages
+  (loop for from/name in froms
+        for from = (find-package from/name)
+        collect `(:use ,@(mapcar #'package-name (package-use-list from)))
+        collect `(:shadow ,@(mapcar #'symbol-name (package-shadowing-symbols from)))
+        collect `(:import-from ,(package-name from)
+                  ,@(loop for s being the present-symbols of from
+                          collect (symbol-name s)))
+        collect `(:export ,@(loop for s being the external-symbols of from
+                                 collect (symbol-name s)))))
 
 ;;;; Define the basic package operations we need to take over.
 ;;;
@@ -354,31 +431,34 @@ As with extending you probably want to specify (:USE) when cloning."
     (when (and cpcs (or excs eics eecs))
       (conduit-error name "Cloning is not compatible with extending"))
     (cond ((or excs eics eecs)
-           `(progn
-              (,defpackage/ul ,name
-                ,@(nreverse dpcs))
-              ;; need always to do this because defpackage is always done.
-              (eval-when (:compile-toplevel :load-toplevel :execute)
-                (let* ((cn (canonicalise-package-name ',name))
-                       (found (assoc cn *conduit-package-descriptions*))
-                       (descr '(:extends ,(nreverse excs)
-                                :extends/including ,(nreverse eics)
-                                :extends/excluding ,(nreverse eecs))))
-                  (if found
-                      (setf (cdr found) descr)
-                    (push (cons cn descr) *conduit-package-descriptions*))
-                  (apply #'make-package-conduit-package cn descr))
-                (recompute-conduits-for ',name))))
+           (let ((extends (nreverse excs))
+                 (extends/including (nreverse eics))
+                 (extends/excluding (nreverse eecs)))
+             `(progn
+                (eval-when (:compile-toplevel :load-toplevel :execute)
+                  (validate-conduits :extends ',extends
+                                     :extends/including ',extends/including
+                                     :extends/excluding ',extends/excluding))
+                (,defpackage/ul ,name
+                  ,@(nreverse dpcs)
+                  ,@(compute-conduit-clauses :extends extends
+                                             :extends/including extends/including
+                                             :extends/excluding extends/excluding))
+                (eval-when (:compile-toplevel :load-toplevel :execute)
+                  (note-conduits ',name
+                                 :extends ',extends
+                                 :extends/including ',extends/including
+                                 :extends/excluding ',extends/excluding)
+                  (recompute-conduits-for ',name)))))
           (cpcs
-           `(progn
-              (,defpackage/ul ,name
-                ,@(nreverse dpcs))
-              (eval-when (:compile-toplevel :load-toplevel :execute)
-                (clone-packages-to-package ',cpcs ',name))))
+           `(,defpackage/ul ,name
+               ,@(nreverse dpcs)
+               ,@(compute-clone-clauses (nreverse cpcs))))
           (t
            `(progn
               (,defpackage/ul ,name ,@(nreverse dpcs))
-              (recompute-conduits-for ',name))))))
+              (eval-when (:compile-toplevel :load-toplevel :execute)
+                (recompute-conduits-for ',name)))))))
 
 (defun delete-package (pack/name)
   (let ((name (canonicalise-package-name pack/name)))
@@ -423,6 +503,7 @@ As with extending you probably want to specify (:USE) when cloning."
 ;;; CMUCL 18b can't do this.  CMUCL 18c Sources 2000-09-27 does have
 ;;; bugs in EVAL-WHEN, but does this right.
 ;;;
+
 (eval-when (:load-toplevel :execute)
   (let ()
     (defpackage :org.tfeb.cl/conduits
