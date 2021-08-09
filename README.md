@@ -190,6 +190,8 @@ Conduit packages should generally be defined with `(:use)` so the used-package l
 
 The `defsystem` macro uses `*underlying-implementation-map*` to know what the underlying `defsystem` is, and so this variable matters at macro-expansion time as well as at runtime.
 
+I believe that [UIOP's `define-package`](https://common-lisp.net/project/asdf/uiop.html#UIOP_002fPACKAGE "define-package") can do at least some of what conduit packages can do.
+
 ## Building
 There is an ASDF system definition, but in fact simply compiling and loading `conduit-packages.lisp` should be enough: there are no dependencies.
 
