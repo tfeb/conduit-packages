@@ -9,4 +9,6 @@
   :author "Tim Bradshaw"
   :license "MIT"
   :homepage "https://github.com/tfeb/conduit-packages"
-  :components ((:file "conduit-packages")))
+  :components ((:file "conduit-packages")
+               (:file "define-conduit-package"
+                :depends-on ("conduit-packages"))))

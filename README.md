@@ -5,12 +5,15 @@ This system also defines a way of making clones of packages which try to be as i
 
 The most important interface to this is through a variant version of the `defpackage` macro, which supports some extra options.  This version of `defpackage` works by checking for options it cares about and then deferring to the underlying implementation for anything it does not care about.  This means that it can sit on top of an underlying implementation which has options other than the standard CL ones.  Some other standard package functions are also overridden to support the dynamic behaviour of conduits.
 
+There is also a shim package which provides interfaces to conduits with other names.
+
 ## Packages in this system
 All packages have domain-structured names.
 
 - `org.tfeb.conduit-packages` is the implementation package.  It exports `defpackage`and some modified versions of other package functionality, as well as a couple of other names.
 - `org.tfeb.cl/conduits` (nickname `org.tfeb.clc`) is a variant version of the standard-defined `common-lisp` package – in fact, a conduit package – which exports all of the symbols in `cl` except for some package-related ones, which are replaced with the appropriate versions from `org.tfeb.conduit-packages`.  You can use this package where you would normally use the `cl` package.
 - `org.tfeb.cl-user/conduits` (nickname `org.tfeb.clc-user`) is a `cl-user` style package which uses `org.tfeb.clc` instead of `cl`.  This package is useful as a scratch package in the same way `cl-user` is.
+- `org.tfeb.conduit-packages/define-conduit-package` is the shim package: it exports the functionality from `org.tfeb.conduit-packages` under other names.
 
 Note that it will not (and can not) work, in any package which uses `cl`, to simply say `(use-package :org.tfeb.conduit-packages)`, as there are inevitable name clashes.  Instead you should either define a package which uses `org.tfeb.clc`, or define your own conduit package (see below).
 
@@ -180,6 +183,18 @@ Error: Symbol "SPIT" not found at all in the ORG.TFEB.FOO package.
 
 The idea behind package clones was to allow you to make a quick-and-dirty point-in-time copy of a package in which you could then experiment without contaminating the namespace of the cloned package.  Their intended use was on LispMs which took a long time to reboot: in practice I think I have almost never used them.
 
+## The shim
+The package `org.tfeb.conduit-packages/define-conduit-package` exports a number of shims with names which include the word `conduit` and so will not clash with names from `cl`.
+
+- **`define-conduit-package`** is a shim around the conduits `defpackage`;
+- **`delete-conduit-package`** is a shim around the conduits `delete-package`;
+- **`rename-conduit-package`** is a shim around the conduits `rename-package`;
+- **`export-from-conduit-package`** is a shim around the conduits `export`;
+- **`unexprt-from-conduit-package`** is a shim around the conduits `unexport`;
+- and finally,  **`recompute-conduits`** is exported.
+
+You can use this package in a package which also uses `cl` as no names now clash.
+
 ## Two approaches to conduits
 When I first wrote conduit packages I was concerned about fasl size, so the expansion of `defpackage`first used `cl:defpackage` to define a simple package, and then walked over the packages it was extending and modified it appropriately.  This made for small fasls, but meant that you often got warnings when compiling & loading files, because `cl:defpackage` would redefine a package which was incompatible with its current state when the file was loaded.
 
@@ -188,9 +203,9 @@ I'm less concerned with fasl sizes now, so I have changed the implementation to 
 ## Notes
 Conduit packages should generally be defined with `(:use)` so the used-package list is empty rather than an implementation-default.  A conduit really is just that: it doesn't need to use any packages because it's never a package where anything is defined.
 
-The `defsystem` macro uses `*underlying-implementation-map*` to know what the underlying `defsystem` is, and so this variable matters at macro-expansion time as well as at runtime.
+The `defpackage` macro uses `*underlying-implementation-map*` to know what the underlying `defpackage` is, and so this variable matters at macro-expansion time as well as at runtime.
 
-I believe that [UIOP's `define-package`](https://common-lisp.net/project/asdf/uiop.html#UIOP_002fPACKAGE "define-package") can do at least some of what conduit packages can do.
+I believe that [UIOP's `define-package`](https://common-lisp.net/project/asdf/uiop.html#UIOP_002fPACKAGE "define-package") can do at least some of what conduit packages can do: conduit packages predates it by at least a decade however.
 
 ## Building
 There is an ASDF system definition, but in fact simply compiling and loading `conduit-packages.lisp` should be enough: there are no dependencies.
@@ -199,4 +214,4 @@ All of this system should be portable CL: if it's not that's a bug.
 
 ---
 
-Conduit packages is copyright 1998-2002, 2020-2021 by Tim Bradshaw.  See `LICENSE` for the license.
+Conduit packages is copyright 1998-2002, 2020-2022 by Tim Bradshaw.  See `LICENSE` for the license.
