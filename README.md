@@ -7,7 +7,7 @@ The conduit packages system provides tools which help you define and manage cond
 2. The variant `defpackage` is itself extensible.  This extensibility is used to support the new options needed for conduit packages, but it can be further extended by other systems.
 3. Finally there is a way of making clones of packages which try to be as identical to them as possible.  Clones are not dynamic, but rather point-in-time copies.
 
-Conduits and the extensible `defpackage` variant are independently useful, or I think so.  Package cloning probably is not: it was once useful on Lisp Machines where you *really* didn't want to break things too much because it took half an hour to reboot the machine, so instead you might work by making a clone of a package, doing some work inthe clone and then deleting it and starting again.  Today, I can restart a lisp and rebuild everything from cold in a few seconds: cloning is not very iseful any more.  The extensible `defpackage`variant, together with the reengineering of conduits to use it, is recent: see further down for some history.
+Conduits and the extensible `defpackage` variant are independently useful, or I think so.  Package cloning probably is not: it was once useful on Lisp Machines where you *really* didn't want to break things too much because it took half an hour to reboot the machine, so instead you might work by making a clone of a package, doing some work in the clone and then deleting it and starting again.  Today, I can restart a lisp and rebuild everything from cold in a few seconds: cloning is not very useful any more.  The extensible `defpackage`variant, together with the reengineering of conduits to use it, is recent: see further down for some history.
 
 ## Systems and packages
 There are two systems which provide various mixes of features.
@@ -150,7 +150,7 @@ Note that `org.tfeb.clc-user` is *not* a conduit: it's just a package which uses
 ```
 
 ### The new way using `define-package`
-These examples assume the packge is `CL-USER`.  Assume there are two packages, `com.cley.program-1` and `com.cley.program-2` both of which export a class called `onion`.  We want to define a conduit which exports only one of these.  Here is how to do that:
+These examples assume the package is `CL-USER`.  Assume there are two packages, `com.cley.program-1` and `com.cley.program-2` both of which export a class called `onion`.  We want to define a conduit which exports only one of these.  Here is how to do that:
 
 ```lisp
 (in-package :cl-user)
@@ -323,7 +323,7 @@ The result of all this is that the defined mechanisms all get to contribute to t
 ### An example: the common lisp mechanism
 This predefined mechanism listens to one variable.
 
-**`* *extended-cl-define-package-clause-keys*`** contains clause keys which the common lisp mechanism should consider to be standard as well as those defined by the language.  By default, it contains `:local-nicknames` and perhaps some implementation-specific clause keys.  You can add clause keys to this to let the mechanism know it should pass them down to the underlying macro.
+**`*extended-cl-define-package-clause-keys*`** contains clause keys which the common lisp mechanism should consider to be standard as well as those defined by the language.  By default, it contains `:local-nicknames` and perhaps some implementation-specific clause keys.  You can add clause keys to this to let the mechanism know it should pass them down to the underlying macro.
 
 Here is the entire mechanism:
 
