@@ -1,4 +1,4 @@
-;;;; ASDF sysdcl for conduit packages
+;;;; ASDF sysdcls for conduit packages
 ;;;
 
 (in-package :asdf-user)
@@ -9,6 +9,17 @@
   :author "Tim Bradshaw"
   :license "MIT"
   :homepage "https://github.com/tfeb/conduit-packages"
-  :components ((:file "conduit-packages")
-               (:file "define-conduit-package"
-                :depends-on ("conduit-packages"))))
+  :serial t
+  :components ((:file "pkg")
+               (:file "impl")
+               (:file "cometh")))
+
+(defsystem "org.tfeb.conduit-packages/define-package"
+  :description "Shims for conduit packages"
+  :version (:read-file-line "VERSION")
+  :author "Tim Bradshaw"
+  :license "MIT"
+  :homepage "https://github.com/tfeb/conduit-packages"
+  :depends-on ("org.tfeb.conduit-packages")
+  :serial t
+  :components ((:file "define-package")))
