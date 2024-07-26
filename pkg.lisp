@@ -98,6 +98,7 @@
   ;; Extensible DEFPACKAGE
   (:export
    #:define-package
+   #:define-conduit-package
    #:*define-package-mechanisms*
    #:*extended-cl-define-package-clause-keys*
    #:initial-define-package-state

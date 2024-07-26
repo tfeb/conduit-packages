@@ -548,6 +548,41 @@ macro."
            ,@afters
            (find-package ',name))))))
 
+(defmacro define-conduit-package (name &body clauses)
+  "Version of DEFINE-PACKAGE which adds a (:use)
+
+This also checks for explicit (:use x) clauses and signals appropriate
+restartable errors.
+
+See DEFINE-PACKAGE"
+  (let ((effective-clauses
+         (if (find-if (lambda (clause)
+                        (and (consp clause)
+                             (eql (car clause) ':use)
+                             (not (null (cdr clause)))))
+                      clauses)
+             (restart-case
+                 (error 'conduit-error  ;help RESTART-CASE
+                        :package name
+                        :format-control "Conduit package ~A uses other packages"
+                        :format-arguments (list name))
+               (continue ()
+                 :report "Blunder on with this likely-bogus conduit"
+                 clauses)
+               (use-value (ec)
+                 :report "Use other clauses (interactively: remove the offending clauses)"
+                 :interactive (lambda ()
+                                (list (remove-if (lambda (clause)
+                                                   (and (consp clause)
+                                                        (eql (car clause) ':use)
+                                                        (not (null (cdr clause)))))
+                                                 clauses)))
+                 ec))
+           clauses)))
+    `(define-package ,name
+       (:use)
+       ,@effective-clauses)))
+
 (defmacro defpackage (name &body clauses)
   "DEFPACKAGE for conduit packages
 

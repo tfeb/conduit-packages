@@ -194,6 +194,36 @@ Here's a slightly larger example where four packages are involved:
    #:onion))
 ```
 
+### A simpler way using `define-conduit-package`
+If all you want to do is define a pure conduit, then `define-conduit-package` provides a shim for `define-package` which makes it simpler and checks for common mistakes.   It is exactly like `define-package` except:
+
+- it inserts a `(:use)` clause;
+- it checks for `(:use x)` clauses and signals a restartable error if it finds any.
+
+```lisp
+(define-conduit-package :org.tfeb.program
+  (:extends/including :org.tfeb.substrate
+   #:vegetable)
+  (:extends :org.tfeb.program-1)
+  (:extends/excluding :org.tfeb.program-2
+   #:onion))
+```
+
+is equivalent to the final `define-package` form above.  The real advantage of this form is:
+
+```lisp
+> (define-conduit-package :foo
+    (:use :cl)
+    (:extends :cl))
+
+Error: Conduit foo uses other packages
+  1 (continue) Blunder on with this likely-bogus conduit
+  2 Use other clauses (interactively: remove the offending clauses)
+  3 (abort) Return to top loop level 0.
+
+1 > :c 2
+```
+
 ### Package cloning
 Cloning a package is making a package which is 'like' it: all of its internal, external, and shadowing symbols, as well as its used packages will be the same as the package it clones, but in addition any other things asked for by the `defpackage` form will be done.  Once a clone is made it lives an independent life to the package it clones: clones are not dynamic, and don't remember what package they were cloned from.  Clones can't also be conduits.
 
@@ -251,6 +281,14 @@ All of these clauses can also be spelled in the singular: `(extend <package>)` f
 These clauses are all implemented by a predefined mechanism for `define-package`: see below.
 
 In addition the semi-standard `:local-nicknames` clause is passed down to the underlying `defsystem` by default: other clauses like this can be added (see below).
+
+### `define-conduit-package`
+`define-conduit-package` provides a slightly simpler way of defining pure conduits.  It is exactly like `define-package` but:
+
+- it interpolates a `(:use)` clause;
+- it checks the provided clauses for `:use` clauses with a non-empty list of packages, and signals a restartable error, with a restart which offers to expunge these clauses.
+
+So it means you have to type slightly less, and also catches a common mistake.
 
 ### Variant package functions, and a utility
 These functions call their CL equivalents but also do conduits maintenance.
@@ -407,9 +445,14 @@ In 2023, I realised that I needed a way of extending `defpackage` for another pu
 
 Much of this is not entirely compatible: I suspect it hurts nobody but me, however.  It all smells better after the changes, I think.
 
+### `define-conduit-package` (2024)
+I just thought this was useful.
+
 ---
 
-Conduit packages is copyright 1998-2002, 2020-2023 by Tim Bradshaw.  See `LICENSE` for the license.
+Conduit packages is copyright 1998-2002, 2020-2024 by Tim Bradshaw.  See `LICENSE` for the license.
+
+---
 
 [^1]:	Here and below I have given package names in lower case: they are, of course, really upper case strings unless you are using Allegro in its incompatible 'modern' mode.  The exceptions are the `CL` and `CL-USER` packages which I've given in upper case: this is slightly inconsistent, sorry.  Symbol names are always given in lower case, although they too are all upper case of course.
 
