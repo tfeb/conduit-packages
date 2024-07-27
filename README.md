@@ -224,6 +224,33 @@ Error: Conduit foo uses other packages
 1 > :c 2
 ```
 
+### Defining variant CLs
+Lets say you want to define come system which is the same as CL, but changes the definition of `if` so it must always have an `else` clause.  The conventional way of doing that would be to have some package which shadows `cl:if` and exports its own `if`.  Here is how you might do it with conduits:
+
+```lisp
+(defpackage :org.tfeb.mycl/pkg
+  (:use :cl)
+  (:use :org.tfeb.conduit-packages/define-package))
+
+(in-package :org.tfeb.mycl/pkg)
+
+(define-conduit-package :org.tfeb.mycl/cl
+  (:extends/excluding :cl #:if))
+
+(define-package :org.tfeb.mycl/impl
+  ;; Implementation package
+  (:use :org.tfeb.mycl/cl)
+  (:export #:if))
+
+(define-conduit-package :org.tfeb.mycl
+  ;; Public package
+  (:extends
+   :org.tfeb.mycl/impl
+   :org.tfeb.mycl/cl))
+```
+
+Obviously in this very simple case this is absurd overkill, but for larger systems this shows how you can put together packages in a way which, I think, is much cleaner than using shadowed symbols.
+
 ### Package cloning
 Cloning a package is making a package which is 'like' it: all of its internal, external, and shadowing symbols, as well as its used packages will be the same as the package it clones, but in addition any other things asked for by the `defpackage` form will be done.  Once a clone is made it lives an independent life to the package it clones: clones are not dynamic, and don't remember what package they were cloned from.  Clones can't also be conduits.
 
