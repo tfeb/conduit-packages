@@ -9,6 +9,33 @@ The conduit packages system provides tools which help you define and manage cond
 
 Conduits and the extensible `defpackage` variant are independently useful, or I think so.  Package cloning probably is not: it was once useful on Lisp Machines where you *really* didn't want to break things too much because it took half an hour to reboot the machine, so instead you might work by making a clone of a package, doing some work in the clone and then deleting it and starting again.  Today, I can restart a lisp and rebuild everything from cold in a few seconds: cloning is not very useful any more.  The extensible `defpackage`variant, together with the reengineering of conduits to use it, is recent: see further down for some history.
 
+## Contents
+- [Systems and packages](#systems-and-packages)
+	- [The org.tfeb.conduit-packages system](#the-orgtfebconduit-packages-system)
+	- [The org.tfeb.conduit-packages/define-package system](#the-orgtfebconduit-packagesdefine-package-system)
+- [Conduits by example](#conduits-by-example)
+	- [The old way using defpackage](#the-old-way-using-defpackage)
+	- [The new way using define-package](#the-new-way-using-define-package)
+	- [A simpler way using define-conduit-package](#a-simpler-way-using-define-conduit-package)
+	- [Defining variant CLs](#defining-variant-cls)
+	- [Package cloning](#package-cloning)
+- [In detail](#in-detail)
+	- [define-package and defpackage](#define-package-and-defpackage)
+	- [define-conduit-package](#define-conduit-package)
+	- [Variant package functions, and a utility](#variant-package-functions-and-a-utility)
+	- [The define-package / defpackage extension mechanism](#the-define-package--defpackage-extension-mechanism)
+	- [An example: the common lisp mechanism](#an-example-the-common-lisp-mechanism)
+	- [An older extension mechanism](#an-older-extension-mechanism)
+- [The shim](#the-shim)
+- [Notes](#notes)
+- [Building](#building)
+- [Portability, bugs](#portability-bugs)
+- [History](#history)
+	- [Long ago (1998-2002)](#long-ago-1998-2002)
+	- [Two approaches to conduits (2021)](#two-approaches-to-conduits-2021)
+	- [Substantial incompatible changes (2023)](#substantial-incompatible-changes-2023)
+	- [define-conduit-package (2024)](#define-conduit-package-2024)
+
 ## Systems and packages
 There are two systems which provide various mixes of features.
 
